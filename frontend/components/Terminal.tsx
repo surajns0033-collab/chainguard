@@ -46,7 +46,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand, audioEnable
   // Handle external commands (clicks from other panels)
   useEffect(() => {
     if (externalCommand && externalCommand.text) {
-      processCommand(externalCommand.text);
+      processCommand(externalCommand.text, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalCommand]);
@@ -103,7 +103,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand, audioEnable
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       setInput(transcript);
-      processCommand(transcript);
+      processCommand(transcript, true); // Pass true to indicate voice input
     };
 
     recognition.onerror = (event: any) => {
@@ -118,7 +118,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand, audioEnable
     recognition.start();
   };
 
-  const processCommand = async (cmdText: string) => {
+  const processCommand = async (cmdText: string, wasSpoken: boolean = false) => {
     if (isProcessing) return;
     setIsProcessing(true);
     
@@ -150,7 +150,8 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand, audioEnable
         msg.id === systemMsgId ? { ...msg, isStreaming: false } : msg
       ));
       setIsProcessing(false);
-      if (fullResponse) {
+      // Only speak if the user spoke the command
+      if (fullResponse && wasSpoken) {
         speakText(fullResponse);
       }
     }
@@ -161,7 +162,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand, audioEnable
     if (!input.trim()) return;
     const userMsg = input.trim();
     setInput('');
-    processCommand(userMsg);
+    processCommand(userMsg, false); // Pass false for typed input
   };
 
   const handleClear = () => {
