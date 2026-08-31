@@ -3,7 +3,8 @@ import { HudPanel } from './components/HudPanel';
 import { AgentGrid } from './components/AgentGrid';
 import { WorkflowVisualizer } from './components/WorkflowVisualizer';
 import { Terminal, TerminalCommand } from './components/Terminal';
-import { SystemStats } from './components/SystemStats';
+import { ActiveDirectives } from './components/ActiveDirectives';
+import { NodeStatus } from './components/NodeStatus';
 import { Agent, WORKFLOW_STATES } from './data/chainguard';
 import { Shield, Activity, Database, Lock, User, Settings, LogOut, LogIn, ChevronDown, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -44,12 +45,6 @@ const App: React.FC = () => {
     { id: 'slack', name: 'Slack Webhooks', status: 'IDLE', endpoint: '', apiKey: '' }
   ]);
 
-  const [securityLogs, setSecurityLogs] = useState<string[]>([
-    "[SYS] INITIALIZING ZERO TRUST ARCHITECTURE...",
-    "[SYS] SPIFFE IDENTITY SERVICE ONLINE.",
-    "[SYS] MODEL ARMOR SCREENING ACTIVE."
-  ]);
-
   // Apply Scanlines effect based on preference
   useEffect(() => {
     const scanlinesEl = document.querySelector('.scanlines') as HTMLElement;
@@ -57,31 +52,6 @@ const App: React.FC = () => {
       scanlinesEl.style.display = preferences.scanlines ? 'block' : 'none';
     }
   }, [preferences.scanlines]);
-
-  // Simulate incoming security logs
-  useEffect(() => {
-    const logs = [
-      "[SEC] Webhook payload verified (HMAC-SHA256).",
-      "[SEC] Input screening: No PII detected.",
-      "[SEC] A2A Gateway: Trace ID generated.",
-      "[WARN] Minor anomaly in vendor data. Risk Analyst notified.",
-      "[SEC] Prompt injection check passed.",
-      "[SYS] Durable execution checkpoint saved.",
-      "[NET] SSE stream latency nominal."
-    ];
-    
-    const interval = setInterval(() => {
-      const randomLog = logs[Math.floor(Math.random() * logs.length)];
-      const timestamp = new Date().toISOString().split('T')[1].substring(0, 8);
-      setSecurityLogs(prev => {
-        const newLogs = [...prev, `[${timestamp}] ${randomLog}`];
-        if (newLogs.length > 20) return newLogs.slice(newLogs.length - 20);
-        return newLogs;
-      });
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -151,14 +121,12 @@ const App: React.FC = () => {
         
         ws.onopen = () => {
           setMcpStatus('CONNECTED');
-          setSecurityLogs(prev => [...prev, `[${new Date().toISOString().split('T')[1].substring(0, 8)}] [NET] MCP WebSocket connected successfully.`]);
           ws.close();
         };
         
         ws.onerror = (err) => {
           console.error("WebSocket Error:", err);
           setMcpStatus('ERROR');
-          setSecurityLogs(prev => [...prev, `[${new Date().toISOString().split('T')[1].substring(0, 8)}] [ERROR] MCP WebSocket connection failed.`]);
         };
       } else {
         // Fallback to HTTP fetch
@@ -169,16 +137,13 @@ const App: React.FC = () => {
         
         if (response.ok) {
           setMcpStatus('CONNECTED');
-          setSecurityLogs(prev => [...prev, `[${new Date().toISOString().split('T')[1].substring(0, 8)}] [NET] MCP HTTP endpoint verified.`]);
         } else {
           setMcpStatus('ERROR');
-          setSecurityLogs(prev => [...prev, `[${new Date().toISOString().split('T')[1].substring(0, 8)}] [ERROR] MCP HTTP returned status ${response.status}.`]);
         }
       }
     } catch (error) {
       console.error("Connection Error:", error);
       setMcpStatus('ERROR');
-      setSecurityLogs(prev => [...prev, `[${new Date().toISOString().split('T')[1].substring(0, 8)}] [ERROR] MCP connection failed: Network error or CORS.`]);
     }
   };
 
@@ -206,15 +171,12 @@ const App: React.FC = () => {
       // Even if it's a 401/403/405, the server is reachable. We consider 2xx as fully connected.
       if (response.ok) {
         updateIntegration(id, { status: 'CONNECTED' });
-        setSecurityLogs(prev => [...prev, `[${new Date().toISOString().split('T')[1].substring(0, 8)}] [NET] ${integration.name} connected successfully.`]);
       } else {
         updateIntegration(id, { status: 'ERROR' });
-        setSecurityLogs(prev => [...prev, `[${new Date().toISOString().split('T')[1].substring(0, 8)}] [ERROR] ${integration.name} returned ${response.status}.`]);
       }
     } catch (error) {
       console.error("Integration Error:", error);
       updateIntegration(id, { status: 'ERROR' });
-      setSecurityLogs(prev => [...prev, `[${new Date().toISOString().split('T')[1].substring(0, 8)}] [ERROR] ${integration.name} connection failed (CORS or Network).`]);
     }
   };
 
@@ -328,7 +290,7 @@ const App: React.FC = () => {
         {/* Center Column: AI Assistant */}
         <div className="col-span-5 flex flex-col gap-4 min-h-0">
           <HudPanel title="AI Assistant" className="flex-1">
-            <Terminal externalCommand={terminalCommand} />
+            <Terminal externalCommand={terminalCommand} audioEnabled={preferences.audio} />
           </HudPanel>
           
           {/* Quick Action Bar */}
@@ -374,21 +336,12 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
-            <HudPanel title="Security Feed">
-              <div className="flex flex-col gap-1 text-[10px] overflow-y-auto pr-1 flex-col-reverse h-full">
-                {securityLogs.map((log, i) => (
-                  <div key={i} className={`
-                    border-l-2 pl-1 py-0.5
-                    ${log.includes('[WARN]') ? 'border-hud-alert text-hud-alert' : 'border-hud-text/30 text-hud-text/70'}
-                  `}>
-                    {log}
-                  </div>
-                ))}
-              </div>
+            <HudPanel title="Active Directives">
+              <ActiveDirectives />
             </HudPanel>
             
-            <HudPanel title="System Load">
-              <SystemStats />
+            <HudPanel title="Node Status">
+              <NodeStatus />
             </HudPanel>
           </div>
         </div>
