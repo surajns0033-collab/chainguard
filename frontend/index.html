@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChainGuard Tactical Interface</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            hud: {
+              base: '#000000',
+              panel: 'rgba(6, 182, 212, 0.05)',
+              border: 'rgba(6, 182, 212, 0.4)',
+              text: '#22d3ee',
+              highlight: '#67e8f9',
+              alert: '#f97316',
+              success: '#4ade80',
+              warning: '#eab308'
+            }
+          },
+          fontFamily: {
+            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', "Liberation Mono", "Courier New", 'monospace'],
+          },
+          animation: {
+            'scanline': 'scanline 8s linear infinite',
+            'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'glitch': 'glitch 0.2s linear infinite',
+          },
+          keyframes: {
+            scanline: {
+              '0%': { transform: 'translateY(-100%)' },
+              '100%': { transform: 'translateY(100vh)' }
+            },
+            glitch: {
+              '0%': { transform: 'translate(0)' },
+              '20%': { transform: 'translate(-2px, 1px)' },
+              '40%': { transform: 'translate(-1px, -1px)' },
+              '60%': { transform: 'translate(2px, 1px)' },
+              '80%': { transform: 'translate(1px, -1px)' },
+              '100%': { transform: 'translate(0)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #000;
+      color: #22d3ee;
+      overflow: hidden; /* Prevent full page scroll, panels will scroll */
+      margin: 0;
+      padding: 0;
+      font-size: 16px; /* Increased from 14px */
+    }
+    /* Custom Scrollbar for HUD feel */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(6, 182, 212, 0.05);
+      border-left: 1px solid rgba(6, 182, 212, 0.1);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(6, 182, 212, 0.5);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(6, 182, 212, 0.8);
+    }
+    .scanlines {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+      background-size: 100% 4px;
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0.3;
+    }
+    .crt-flicker {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(6, 182, 212, 0.02);
+      pointer-events: none;
+      z-index: 49;
+      animation: pulse 4s infinite;
+    }
+    .interactive-click {
+      transition: all 0.1s ease;
+    }
+    .interactive-click:active {
+      transform: scale(0.98);
+      filter: brightness(1.2);
+    }
+  </style>
+  </head>
+<body>
+  <div class="scanlines"></div>
+  <div class="crt-flicker"></div>
+  <div id="root"></div>
+  <script type="module" src="./index.tsx"></script>
+<script type="module" src="/index.js"></script></body>
+</html>
