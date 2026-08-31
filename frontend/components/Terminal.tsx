@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { streamSystemResponse } from '../services/geminiService';
+import { Trash2 } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -19,7 +20,7 @@ interface TerminalProps {
 
 export const Terminal: React.FC<TerminalProps> = ({ externalCommand }) => {
   const [messages, setMessages] = useState<Message[]>([
-    { id: 'init-1', sender: 'SYSTEM', text: '[ INITIALIZATION ]\n| Module | Status | Notes |\n|---|---|---|\n| Tactical Interface | ONLINE | Awaiting operator input |\n| A2A Gateway | ACTIVE | Secure connection established |' }
+    { id: 'init-1', sender: 'SYSTEM', text: '[ INITIALIZATION ]\n| Module | Status | Notes |\n|---|---|---|\n| AI Assistant | ONLINE | Awaiting user input |\n| A2A Gateway | ACTIVE | Secure connection established |' }
   ]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -79,6 +80,12 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand }) => {
     const userMsg = input.trim();
     setInput('');
     processCommand(userMsg);
+  };
+
+  const handleClear = () => {
+    setMessages([
+      { id: Date.now().toString(), sender: 'SYSTEM', text: '[ SYSTEM ]\n- AI ASSISTANT MEMORY PURGED.\n- AWAITING INPUT...' }
+    ]);
   };
 
   // Colorize specific status keywords without the glow effect
@@ -217,7 +224,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand }) => {
         {messages.map((msg) => (
           <div key={msg.id} className={`flex flex-col ${msg.sender === 'USER' ? 'items-end' : 'items-start'}`}>
             <span className={`text-[10px] mb-0.5 opacity-50 ${msg.sender === 'USER' ? 'text-hud-highlight' : 'text-hud-text'}`}>
-              {msg.sender === 'USER' ? 'OPERATOR' : 'SYS.CORE'}
+              {msg.sender === 'USER' ? 'USER' : 'SYS.CORE'}
             </span>
             <div className={`
               p-3 max-w-[98%] break-words
@@ -242,13 +249,22 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand }) => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={isProcessing}
-          className="flex-1 bg-transparent outline-none text-hud-text placeholder-hud-text/30 text-sm"
+          className="flex-1 bg-transparent outline-none text-hud-text placeholder-hud-text/30 text-sm pr-8"
           placeholder="ENTER COMMAND OR QUERY..."
           autoComplete="off"
           spellCheck="false"
         />
-        {isProcessing && (
-          <div className="absolute right-2 w-3 h-3 border-2 border-hud-highlight border-t-transparent rounded-full animate-spin"></div>
+        {isProcessing ? (
+          <div className="absolute right-2 w-4 h-4 border-2 border-hud-highlight border-t-transparent rounded-full animate-spin"></div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2 text-hud-text/50 hover:text-hud-alert transition-colors p-1"
+            title="Clear History"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         )}
       </form>
     </div>
