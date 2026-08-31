@@ -16,7 +16,7 @@
       const HOST_NAME = 'aiplatform.googleapis.com';
       const MODEL_METHODS = ['generateContent', 'predict', 'streamGenerateContent'];
       const AGENT_METHODS = ['query', 'streamQuery'];
-      const isSafePathSegment = (val) => val && encodeURIComponent(val) === val;
+      const isSafePathSegment = (val) => val && val !== '.' && val !== '..' && encodeURIComponent(val).replace(/%3A/g, ':').replace(/%40/g, '@') === val;
 
       const urlObj = new URL(url);
       if (!urlObj.hostname.endsWith(HOST_NAME)) {
@@ -113,7 +113,7 @@
           headers: {
             'Content-Type': 'application/json',
             // Add a random header to identify these proxied requests on the Node.js backend.
-            'X-App-Proxy': 'vkwOW1rffdTATJyau6fIwq6Ygw9_wJoN',
+            'X-App-Proxy': 'TnAKH5dHlz2x0hmYqAfT5eTLsmOs_svk',
           },
           body: JSON.stringify(requestDetails),
         };
