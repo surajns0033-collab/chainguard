@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { streamSystemResponse } from '../services/geminiService';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Mic } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -16,14 +16,16 @@ export interface TerminalCommand {
 
 interface TerminalProps {
   externalCommand?: TerminalCommand | null;
+  audioEnabled?: boolean;
 }
 
-export const Terminal: React.FC<TerminalProps> = ({ externalCommand }) => {
+export const Terminal: React.FC<TerminalProps> = ({ externalCommand, audioEnabled = true }) => {
   const [messages, setMessages] = useState<Message[]>([
     { id: 'init-1', sender: 'SYSTEM', text: '[ INITIALIZATION ]\n| Module | Status | Notes |\n|---|---|---|\n| AI Assistant | ONLINE | Awaiting user input |\n| A2A Gateway | ACTIVE | Secure connection established |' }
   ]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -34,6 +36,13 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand }) => {
     scrollToBottom();
   }, [messages]);
 
+  // Pre-load voices
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+    }
+  }, []);
+
   // Handle external commands (clicks from other panels)
   useEffect(() => {
     if (externalCommand && externalCommand.text) {
@@ -42,9 +51,78 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalCommand]);
 
+  const speakText = (text: string) => {
+    if (!audioEnabled || !window.speechSynthesis) return;
+    
+    window.speechSynthesis.cancel(); // Stop any current speech
+
+    // Clean markdown and special characters for better speech
+    const cleanText = text
+      .replace(/\[.*?\]/g, '') // Remove headers like [ SYSTEM STATUS ]
+      .replace(/[*_|-]/g, ' ') // Replace markdown formatting with space
+      .replace(/\n/g, '. ') // Replace newlines with periods for pauses
+      .trim();
+
+    if (!cleanText) return;
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    
+    const voices = window.speechSynthesis.getVoices();
+    // Try to find a British male voice first for that specific feel, fallback to any British voice
+    let voice = voices.find(v => v.lang === 'en-GB' && v.name.toLowerCase().includes('male'));
+    if (!voice) voice = voices.find(v => v.lang === 'en-GB');
+    if (!voice) voice = voices.find(v => v.lang.startsWith('en-')); // Fallback to any English
+
+    if (voice) utterance.voice = voice;
+    
+    utterance.rate = 1.0;
+    utterance.pitch = 0.9;
+    
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const toggleListening = () => {
+    // @ts-ignore - SpeechRecognition is not standard in all TS definitions
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice input is not supported in this browser.");
+      return;
+    }
+
+    if (isListening) {
+      return; // Let it finish naturally
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-GB';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => setIsListening(true);
+    
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+      processCommand(transcript);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
+
   const processCommand = async (cmdText: string) => {
     if (isProcessing) return;
     setIsProcessing(true);
+    
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
 
     const newMessages = [...messages, { id: Date.now().toString(), sender: 'USER' as const, text: cmdText }];
     setMessages(newMessages);
@@ -52,9 +130,9 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand }) => {
     const systemMsgId = (Date.now() + 1).toString();
     setMessages(prev => [...prev, { id: systemMsgId, sender: 'SYSTEM', text: '', isStreaming: true }]);
 
+    let fullResponse = '';
     try {
       const stream = streamSystemResponse(cmdText);
-      let fullResponse = '';
       
       for await (const chunk of stream) {
         fullResponse += chunk;
@@ -63,14 +141,18 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand }) => {
         ));
       }
     } catch (error) {
+      fullResponse = '[ ERROR ]\n| Component | Status |\n|---|---|\n| Uplink | FAILED |';
       setMessages(prev => prev.map(msg => 
-        msg.id === systemMsgId ? { ...msg, text: '[ ERROR ]\n| Component | Status |\n|---|---|\n| Uplink | FAILED |' } : msg
+        msg.id === systemMsgId ? { ...msg, text: fullResponse } : msg
       ));
     } finally {
       setMessages(prev => prev.map(msg => 
         msg.id === systemMsgId ? { ...msg, isStreaming: false } : msg
       ));
       setIsProcessing(false);
+      if (fullResponse) {
+        speakText(fullResponse);
+      }
     }
   };
 
@@ -83,6 +165,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand }) => {
   };
 
   const handleClear = () => {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     setMessages([
       { id: Date.now().toString(), sender: 'SYSTEM', text: '[ SYSTEM ]\n- AI ASSISTANT MEMORY PURGED.\n- AWAITING INPUT...' }
     ]);
@@ -249,7 +332,7 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand }) => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={isProcessing}
-          className="flex-1 bg-transparent outline-none text-hud-text placeholder-hud-text/30 text-sm pr-8"
+          className="flex-1 bg-transparent outline-none text-hud-text placeholder-hud-text/30 text-sm pr-16"
           placeholder="ENTER COMMAND OR QUERY..."
           autoComplete="off"
           spellCheck="false"
@@ -257,14 +340,24 @@ export const Terminal: React.FC<TerminalProps> = ({ externalCommand }) => {
         {isProcessing ? (
           <div className="absolute right-2 w-4 h-4 border-2 border-hud-highlight border-t-transparent rounded-full animate-spin"></div>
         ) : (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="absolute right-2 text-hud-text/50 hover:text-hud-alert transition-colors p-1"
-            title="Clear History"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          <div className="absolute right-2 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={toggleListening}
+              className={`p-1 transition-colors ${isListening ? 'text-hud-alert animate-pulse' : 'text-hud-text/50 hover:text-hud-highlight'}`}
+              title="Voice Input"
+            >
+              <Mic className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleClear}
+              className="text-hud-text/50 hover:text-hud-alert transition-colors p-1"
+              title="Clear History"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         )}
       </form>
     </div>
