@@ -1,4 +1,7 @@
 {
   "name": "ChainGuard Tactical Interface",
-  "description": "Advanced HUD for monitoring and interacting with the ChainGuard autonomous multi-agent supply chain system."
+  "description": "Advanced HUD for monitoring and interacting with the ChainGuard autonomous multi-agent supply chain system.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }
